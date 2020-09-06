@@ -1,0 +1,9 @@
+{:duct.profile/base
+ {:duct.core/project-ns hughpowell.co.uk.fire-for-effect}
+
+ :duct.profile/dev   #duct/include "dev"
+ :duct.profile/local #duct/include "local"
+ :duct.profile/test  #duct/include "test"
+ :duct.profile/prod  {}
+
+ :duct.module/logging {}}
