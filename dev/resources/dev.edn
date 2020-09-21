@@ -1,1 +1,4 @@
-{}
+{:hughpowell.co.uk.cross-cutting-concerns.storage/connection {:storage {:backend :mem
+                                                                        :id "dev"}}
+ [:duct/const :bank-of-scotland/input-path] "dev/data/"
+ [:duct/const :bank-of-scotland/input-filter] "BankOfScotland.*\\.csv$"}
