@@ -1,4 +1,4 @@
-(ns hughpowell.co.uk.bank-of-scotland.csv-parser
+(ns hughpowell.co.uk.phoenix.bank-of-scotland.csv-parser
   (:require [clojure.spec.alpha :as spec]
             [integrant.core :as ig]
             [java-time :as java-time]))

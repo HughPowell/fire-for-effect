@@ -1,0 +1,18 @@
+{:duct.profile/base
+ {:duct.core/project-ns hughpowell.co.uk.phoenix
+
+  :storage/path #duct/env "PHOENIX_STORAGE_PATH"
+  :hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection
+  {:storage {:backend :file
+             :path #ig/ref :storage/path}}
+
+  }
+
+ :duct.profile/dev   #duct/include "dev"
+ :duct.profile/local #duct/include "local"
+ :duct.profile/test  #duct/include "test"
+ :duct.profile/prod  {}
+
+ :hughpowell.co.uk.phoenix.bank-of-scotland/module {}
+
+ :duct.module/logging {}}

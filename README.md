@@ -1,4 +1,4 @@
-# FIRE for effect
+# Phoenix
 
 A program for tracking your way to [FIRE](https://en.wikipedia.org/wiki/FIRE_movement).
 

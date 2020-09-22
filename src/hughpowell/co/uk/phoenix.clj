@@ -1,4 +1,4 @@
-(ns hughpowell.co.uk.fire-for-effect
+(ns hughpowell.co.uk.phoenix
   (:gen-class)
   (:require [duct.core :as duct]))
 
@@ -7,6 +7,6 @@
 (defn -main [& args]
   (let [keys     (or (duct/parse-keys args) [:duct/daemon])
         profiles [:duct.profile/prod]]
-    (-> (duct/resource "hughpowell/co/uk/fire_for_effect/config.edn")
+    (-> (duct/resource "hughpowell/co/uk/phoenix/config.edn")
         (duct/read-config)
         (duct/exec-config profiles keys))))

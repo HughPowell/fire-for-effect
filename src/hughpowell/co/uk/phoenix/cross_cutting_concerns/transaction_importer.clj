@@ -1,8 +1,8 @@
-(ns hughpowell.co.uk.cross-cutting-concerns.transaction-importer
+(ns hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer
   (:require [integrant.core :as ig]
-            [hughpowell.co.uk.cross-cutting-concerns.storage :as storage]))
+            [hughpowell.co.uk.phoenix.cross-cutting-concerns.storage :as storage]))
 
-(defmethod ig/init-key ::importer [_key {:keys [file-watcher csv-parser schemaed-connection]
+(defmethod ig/init-key ::importer [_key {:keys                                        [file-watcher csv-parser schemaed-connection]
                                          {:keys [headers institution date-attribute]} :config}]
   (file-watcher
     (fn [action file]

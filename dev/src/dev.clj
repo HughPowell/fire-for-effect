@@ -12,7 +12,7 @@
 (duct/load-hierarchy)
 
 (defn read-config []
-  (duct/read-config (io/resource "hughpowell/co/uk/fire_for_effect/config.edn")))
+  (duct/read-config (io/resource "hughpowell/co/uk/phoenix/config.edn")))
 
 (defn test-all []
   (kaocha/run-all))

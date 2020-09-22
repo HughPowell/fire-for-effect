@@ -1,8 +1,8 @@
-(ns hughpowell.co.uk.bank-of-scotland.storage
+(ns hughpowell.co.uk.phoenix.bank-of-scotland.storage
   (:require [integrant.core :as ig]))
 
 (def ^:private schema
-  [{:db/ident       :fire-for-effect/institution
+  [{:db/ident       :phoenix/institution
     :db/valueType   :db.type/keyword
     :db/cardinality :db.cardinality/one}
    {:db/ident       :bank-of-scotland/date

@@ -1,2 +1,2 @@
-{:hughpowell.co.uk.cross-cutting-concerns.storage/connection {:storage {:backend :mem
-                                                                        :id "test"}}}
+{:hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection {:storage {:backend :mem
+                                                                                :id "test"}}}

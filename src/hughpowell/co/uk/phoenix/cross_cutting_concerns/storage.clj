@@ -1,4 +1,4 @@
-(ns hughpowell.co.uk.cross-cutting-concerns.storage
+(ns hughpowell.co.uk.phoenix.cross-cutting-concerns.storage
   (:require [clojure.data :as data]
             [clojure.set :as set]
             [datahike.api :as datahike]
@@ -25,9 +25,9 @@
   (let [current-transactions (datahike/q
                                '[:find [(pull ?e [*]) ...]
                                  :in $ ?institution ?date-attribute ?start-date ?end-date
-                                 :where [?e :fire-for-effect/institution ?institution]
+                                 :where [?e :phoenix/institution ?institution]
                                  [?e ?date-attribute ?date]
-                                 [(hughpowell.co.uk.cross-cutting-concerns.storage/in-date-range? ?start-date ?date ?end-date)]]
+                                 [(hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/in-date-range? ?start-date ?date ?end-date)]]
                                @connection
                                institution
                                date-attribute

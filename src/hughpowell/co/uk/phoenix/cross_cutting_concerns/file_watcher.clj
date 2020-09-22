@@ -1,4 +1,4 @@
-(ns hughpowell.co.uk.cross-cutting-concerns.file-watcher
+(ns hughpowell.co.uk.phoenix.cross-cutting-concerns.file-watcher
   (:require [hawk.core :as hawk]
             [integrant.core :as ig]))
 

@@ -1,4 +1,4 @@
-(ns hughpowell.co.uk.cross-cutting-concerns.csv-parser
+(ns hughpowell.co.uk.phoenix.cross-cutting-concerns.csv-parser
   (:require [clojure.data.csv :as csv]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as spec]
