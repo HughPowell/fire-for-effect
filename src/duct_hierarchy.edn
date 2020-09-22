@@ -1,1 +1,2 @@
-{}
+{:hughpowell.co.uk.bank-of-scotland/module [:duct/module]
+ :storage/path [:duct/const]}

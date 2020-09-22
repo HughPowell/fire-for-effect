@@ -1,37 +1,9 @@
 {:duct.profile/base
  {:duct.core/project-ns hughpowell.co.uk.fire-for-effect
 
-  [:duct/const :storage/path] #duct/env "FIRE_FOR_EFFECT_STORAGE_PATH"
+  :storage/path #duct/env "FIRE_FOR_EFFECT_STORAGE_PATH"
   :hughpowell.co.uk.cross-cutting-concerns.storage/connection {:storage {:backend :file
                                                                          :path #ig/ref :storage/path}}
-
-  [:duct/const :bank-of-scotland/input-path] #duct/env "FIRE_FOR_EFFECT_BANK_OF_SCOTLAND_INPUT_DIR"
-  [:duct/const :bank-of-scotland/input-filter] #duct/env "FIRE_FOR_EFFECT_BANK_OF_SCOTLAND_INPUT_FILTER"
-
-  :hughpowell.co.uk.bank-of-scotland/header-spec {}
-  :hughpowell.co.uk.bank-of-scotland/headers {}
-  :hughpowell.co.uk.bank-of-scotland/row-spec {}
-  :hughpowell.co.uk.bank-of-scotland/schema {}
-
-  [:hughpowell.co.uk.cross-cutting-concerns.csv-parser/parse :bank-of-scotland/csv-parser]
-  {:header-spec #ig/ref :hughpowell.co.uk.bank-of-scotland/header-spec
-   :row-spec #ig/ref :hughpowell.co.uk.bank-of-scotland/row-spec}
-
-  [:hughpowell.co.uk.cross-cutting-concerns.storage/upsert-period-of-transactions :bank-of-scotland/upsert-period-of-transactions]
-  {:connection #ig/ref :hughpowell.co.uk.cross-cutting-concerns.storage/connection
-   :schema #ig/ref :hughpowell.co.uk.bank-of-scotland/schema}
-
-  [:hughpowell.co.uk.cross-cutting-concerns.transaction-importer/importer :bank-of-scotland/transaction-importer]
-  {:csv-parser #ig/ref :bank-of-scotland/csv-parser
-   :headers #ig/ref :hughpowell.co.uk.bank-of-scotland/headers
-   :upsert #ig/ref :bank-of-scotland/upsert-period-of-transactions
-   :institution :fire-for-effect/bank-of-scotland
-   :date-attribute :bank-of-scotland/date}
-
-  [:hughpowell.co.uk.cross-cutting-concerns.file-watcher/handler :bank-of-scotland/watcher]
-  {:path #ig/ref :bank-of-scotland/input-path
-   :filter #ig/ref :bank-of-scotland/input-filter
-   :handler #ig/ref :bank-of-scotland/transaction-importer}
 
   }
 
@@ -39,5 +11,7 @@
  :duct.profile/local #duct/include "local"
  :duct.profile/test  #duct/include "test"
  :duct.profile/prod  {}
+
+ :hughpowell.co.uk.bank-of-scotland/module {}
 
  :duct.module/logging {}}

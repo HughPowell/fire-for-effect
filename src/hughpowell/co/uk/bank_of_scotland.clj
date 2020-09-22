@@ -1,81 +1,37 @@
 (ns hughpowell.co.uk.bank-of-scotland
-  (:require [clojure.spec.alpha :as spec]
-            [java-time :as java-time]
+  (:require [duct.core :as duct]
             [integrant.core :as ig]))
 
-(defn ->money [s]
-  (try
-    (-> s
-        not-empty
-        (or 0)
-        bigdec
-        (.setScale 2))
-    (catch Throwable _ ::spec/invalid)))
+(def ^:private config
+  {[:duct/const :bank-of-scotland/input-path]         "dev/data/"
+   [:duct/const :bank-of-scotland/input-filter]       "BankOfScotland.*\\.csv$"
 
-(spec/def ::date (spec/conformer #(try (java-time/local-date "dd/MM/yyyy" %) (catch Throwable _ ::spec/invalid))))
-(spec/def ::type string?)
-(spec/def ::sort-code (spec/conformer #(or (re-find #"\d{2}-\d{2}-\d{2}" %) ::spec/invalid)))
-(spec/def ::account-number (spec/conformer #(or (re-find #"\d{8}" %) ::spec/invalid)))
-(spec/def ::description string?)
-(spec/def ::debit (spec/conformer ->money))
-(spec/def ::credit (spec/conformer ->money))
-(spec/def ::balance (spec/conformer ->money))
+   :hughpowell.co.uk.bank-of-scotland.csv-parser/spec {}
+   [:hughpowell.co.uk.cross-cutting-concerns.csv-parser/parse :bank-of-scotland/csv-parser]
+   (ig/ref :hughpowell.co.uk.bank-of-scotland.csv-parser/spec)
 
-(spec/def ::csv-row
-  (spec/and
-    (spec/tuple ::date ::type ::sort-code ::account-number ::description ::debit ::credit ::balance)
-    (fn [[_ _ _ _ _ debit credit _]]
-      (or (and (zero? debit) (pos? credit))
-          (and (pos? debit) (zero? credit))
-          ::spec/invalid))))
+   :hughpowell.co.uk.bank-of-scotland.storage/schema  {}
+   [:hughpowell.co.uk.cross-cutting-concerns.storage/schemaed-connection :bank-of-scotland/schemaed-connection]
+   {:connection (ig/ref :hughpowell.co.uk.cross-cutting-concerns.storage/connection)
+    :schema     (ig/ref :hughpowell.co.uk.bank-of-scotland.storage/schema)}
 
-(defmethod ig/init-key ::row-spec [_key _opts] ::csv-row)
+   [:hughpowell.co.uk.cross-cutting-concerns.file-watcher/handler :bank-of-scotland/watcher]
+   {:path   (ig/ref :bank-of-scotland/input-path)
+    :filter (ig/ref :bank-of-scotland/input-filter)}
 
-(spec/def ::header-date #{"Transaction Date"})
-(spec/def ::header-type #{"Transaction Type"})
-(spec/def ::header-sort-code #{"Sort Code"})
-(spec/def ::header-account-number #{"Account Number"})
-(spec/def ::header-description #{"Transaction Description"})
-(spec/def ::header-debit #{"Debit Amount"})
-(spec/def ::header-credit #{"Credit Amount"})
-(spec/def ::header-balance #{"Balance"})
+   :hughpowell.co.uk.bank-of-scotland.storage/headers {}
+   [:hughpowell.co.uk.cross-cutting-concerns.transaction-importer/importer :bank-of-scotland/transaction-importer]
+   {:file-watcher        (ig/ref :bank-of-scotland/watcher)
+    :schemaed-connection (ig/ref :bank-of-scotland/schemaed-connection)
+    :csv-parser          (ig/ref :bank-of-scotland/csv-parser)
+    :config              {:headers        (ig/ref :hughpowell.co.uk.bank-of-scotland.storage/headers)
+                          :institution    :fire-for-effect/bank-of-scotland
+                          :date-attribute :bank-of-scotland/date}}})
 
-(spec/def ::csv-headers
-  (spec/tuple ::header-date ::header-type ::header-sort-code ::header-account-number ::header-description ::header-debit
-              ::header-credit ::header-balance))
-
-(defmethod ig/init-key ::header-spec [_key _opts] ::csv-headers)
-
-(def schema
-  [{:db/ident       :fire-for-effect/institution
-    :db/valueType   :db.type/keyword
-    :db/cardinality :db.cardinality/one}
-   {:db/ident       :bank-of-scotland/date
-    :db/valueType   :db.type/instant
-    :db/cardinality :db.cardinality/one}
-   {:db/ident       :bank-of-scotland/type
-    :db/valueType   :db.type/string
-    :db/cardinality :db.cardinality/one}
-   {:db/ident       :bank-of-scotland/sort-code
-    :db/valueType   :db.type/string
-    :db/cardinality :db.cardinality/one}
-   {:db/ident       :bank-of-scotland/account-number
-    :db/valueType   :db.type/string
-    :db/cardinality :db.cardinality/one}
-   {:db/ident       :bank-of-scotland/description
-    :db/valueType   :db.type/string
-    :db/cardinality :db.cardinality/one}
-   {:db/ident       :bank-of-scotland/debit
-    :db/valueType   :db.type/bigdec
-    :db/cardinality :db.cardinality/one}
-   {:db/ident       :bank-of-scotland/credit
-    :db/valueType   :db.type/bigdec
-    :db/cardinality :db.cardinality/one}
-   {:db/ident       :bank-of-scotland/balance
-    :db/valueType   :db.type/bigdec
-    :db/cardinality :db.cardinality/one}])
-
-(defmethod ig/init-key ::schema [_key _opts] schema)
-
-(defmethod ig/init-key ::headers [_key _opts]
-  (map :db/ident schema))
+(defmethod ig/init-key ::module [_key opts]
+  (fn [base-config]
+    (duct/merge-configs
+      base-config
+      (-> config
+          (update [:duct/const :bank-of-scotland/input-path] #(:input-path opts %))
+          (update [:duct/const :bank-of-scotland/input-filter] #(:input-filter opts %))))))
