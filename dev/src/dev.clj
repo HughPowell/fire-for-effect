@@ -21,7 +21,7 @@
   (apply kaocha/run args))
 
 (def profiles
-  [:duct.profile/dev :ductprofile/test :duct.profile/local])
+  [:duct.profile/dev :duct.profile/local])
 
 (clojure.tools.namespace.repl/set-refresh-dirs "dev/src" "src" "test")
 

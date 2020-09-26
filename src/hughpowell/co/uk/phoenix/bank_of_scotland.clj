@@ -1,10 +1,11 @@
 (ns hughpowell.co.uk.phoenix.bank-of-scotland
   (:require [duct.core :as duct]
-            [integrant.core :as ig]))
+            [integrant.core :as ig]
+            [hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer :as bank-of-scotland-transaction-importer]))
 
 (def ^:private config
-  {[:duct/const :bank-of-scotland/input-path]         "dev/data/"
-   [:duct/const :bank-of-scotland/input-filter]       "BankOfScotland.*\\.csv$"
+  {:bank-of-scotland/input-path         "dev/data/"
+   :bank-of-scotland/input-filter       "BankOfScotland.*\\.csv$"
 
    :hughpowell.co.uk.phoenix.bank-of-scotland.csv-parser/spec {}
    [:hughpowell.co.uk.phoenix.cross-cutting-concerns.csv-parser/parse :bank-of-scotland/csv-parser]
@@ -26,12 +27,15 @@
     :csv-parser          (ig/ref :bank-of-scotland/csv-parser)
     :config              {:headers        (ig/ref :hughpowell.co.uk.phoenix.bank-of-scotland.storage/headers)
                           :institution    :phoenix/bank-of-scotland
-                          :date-attribute :bank-of-scotland/date}}})
+                          :date-attribute :bank-of-scotland/date}
+    :completion-channel (ig/ref ::bank-of-scotland-transaction-importer/completion-channel)}})
 
-(defmethod ig/init-key ::module [_key opts]
+(defmethod ig/init-key ::module [_key _opts]
   (fn [base-config]
     (duct/merge-configs
       base-config
       (-> config
-          (update [:duct/const :bank-of-scotland/input-path] #(:input-path opts %))
-          (update [:duct/const :bank-of-scotland/input-filter] #(:input-filter opts %))))))
+          (update :bank-of-scotland/input-path #(:bank-of-scotland/input-path base-config %))
+          (update :bank-of-scotland/input-filter #(:bank-of-scotland/input-filter base-config %))
+          (update ::bank-of-scotland-transaction-importer/completion-channel
+                  #(::bank-of-scotland-transaction-importer/completion-channel base-config %))))))

@@ -19,15 +19,15 @@
 
 (defn- validate-&-strip-headers [headers-spec [headers & rows]]
   (validate headers-spec headers)
-  rows)
+  (or rows []))
 
-(defn- parse-csv [file headers-spec row-spec]
+(defn- parse-csv [file headers-spec rows-spec]
   (with-open [reader (io/reader file)]
     (->> reader
          csv/read-csv
          (validate-&-strip-headers headers-spec)
-         (map #(conform row-spec %))
+         (conform rows-spec)
          doall)))
 
-(defmethod ig/init-key ::parse [_key {:keys [headers-spec row-spec]}]
-  (fn [f] (parse-csv f headers-spec row-spec)))
+(defmethod ig/init-key ::parse [_key {:keys [headers-spec rows-spec]}]
+  (fn [f] (parse-csv f headers-spec rows-spec)))

@@ -1,2 +1,4 @@
 {:hughpowell.co.uk.bank-of-scotland/module [:duct/module]
- :storage/path [:duct/const]}
+ :storage/path                             [:duct/const]
+ :bank-of-scotland/input-path              [:duct/const]
+ :bank-of-scotland/input-filter            [:duct/const]}

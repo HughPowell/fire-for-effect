@@ -1,0 +1,5 @@
+#kaocha/v1
+#meta-merge [{:tests      [{:id          :unit
+                            :ns-patterns ["-specification$"]
+                            :test-paths  ["test"]}]
+              :fail-fast? true}]

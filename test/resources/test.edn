@@ -1,2 +1,4 @@
 {:hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection {:storage {:backend :mem
-                                                                                :id "test"}}}
+                                                                                :id "test"}}
+ :hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer/completion-channel {}
+ :bank-of-scotland/input-path "test/data/bank-of-scotland/"}
