@@ -17,7 +17,12 @@
                (spec/gen (spec/double-in :infinite? false :NaN? false :min 0.00)))))
 
 (spec/def ::date (spec/with-gen
-                   (spec/conformer #(try (java-time/local-date "dd/MM/yyyy" %) (catch Throwable _ ::spec/invalid)))
+                   (spec/conformer #(try
+                                      (java-time/zoned-date-time
+                                        (java-time/local-date "dd/MM/yyyy" %)
+                                        (java-time/local-time 0)
+                                        "Europe/London")
+                                      (catch Throwable _ ::spec/invalid)))
                    #(gen/fmap (fn [d] (.format (SimpleDateFormat. "dd/MM/yyy") d))
                               (spec/gen (spec/inst-in #inst "2000" #inst "2100")))))
 (spec/def ::type (spec/and string? seq))
@@ -58,4 +63,4 @@
 
 (defmethod ig/init-key ::spec [_key _opts]
   {:headers-spec ::csv-headers
-   :rows-spec     ::csv-rows})
+   :rows-spec    ::csv-rows})

@@ -1,12 +1,13 @@
 {:paths   ["src" "resources"]
- :deps    {org.clojure/clojure    {:mvn/version "1.10.1"}
-           duct/core              {:mvn/version "0.8.0"}
-           duct/module.logging    {:mvn/version "0.5.0"}
-           org.clojure/data.csv   {:mvn/version "1.0.0"}
-           clojure.java-time      {:mvn/version "0.3.2"}
-           hawk                   {:mvn/version "0.2.11"}
-           io.replikativ/datahike {:mvn/version "0.3.1"}
-           me.raynes/fs           {:mvn/version "1.4.6"}}
+ :deps    {org.clojure/clojure         {:mvn/version "1.10.1"}
+           duct/core                   {:mvn/version "0.8.0"}
+           duct/module.logging         {:mvn/version "0.5.0"}
+           org.clojure/data.csv        {:mvn/version "1.0.0"}
+           clojure.java-time           {:mvn/version "0.3.2"}
+           org.threeten/threeten-extra {:mvn/version "1.2"}
+           hawk                        {:mvn/version "0.2.11"}
+           io.replikativ/datahike      {:mvn/version "0.3.2"}
+           me.raynes/fs                {:mvn/version "1.4.6"}}
  :aliases {:dev     {:extra-paths ["dev/src" "dev/resources"]
                      :extra-deps  {integrant/repl {:mvn/version "0.3.1"}
                                    clj-http       {:mvn/version "3.10.1"}}}

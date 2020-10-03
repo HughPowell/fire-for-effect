@@ -1,25 +1,26 @@
 (ns hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer
   (:require [clojure.core.async :as async]
             [integrant.core :as ig]
+            [java-time :as java-time]
             [me.raynes.fs :as fs]
             [hughpowell.co.uk.phoenix.cross-cutting-concerns.storage :as storage]))
 
 (defn- handle-file-action [headers institution csv-parser date-attribute schemaed-connection completion-channel]
   (fn [action file]
     (try
-      (when (or (and (= action :create)
-                     (not (zero? (fs/size file))))
-                (= action :modify))
+      (when (and (#{:create :modify} action)
+                 (not (zero? (fs/size file))))
         (let [transactions (map #(zipmap headers (cons institution %)) (csv-parser file))
               dates (map date-attribute transactions)]
           (when (seq transactions)
-            (storage/upsert-period-of-transactions
+            (storage/upsert-interval-of-transactions
               schemaed-connection
               institution
               date-attribute
               transactions
-              (java-time/adjust (apply java-time/min dates) :first-day-of-month)
-              (java-time/adjust (apply java-time/max dates) :last-day-of-month))))
+              (java-time/interval
+                (java-time/adjust (apply java-time/min dates) :first-day-of-month)
+                (java-time/adjust (apply java-time/max dates) :last-day-of-month)))))
         (when (some? completion-channel)
           (async/>!! completion-channel :complete)))
       (catch Throwable t

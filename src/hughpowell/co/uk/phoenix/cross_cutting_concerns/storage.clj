@@ -4,37 +4,21 @@
             [datahike.api :as datahike]
             [integrant.core :as ig]
             [java-time :as java-time])
-  (:import (clojure.lang ExceptionInfo)
-           (java.time ZoneId)))
+  (:import (clojure.lang ExceptionInfo)))
 
-(defn- ->local-date [instant]
-  (-> instant
-      java-time/instant
-      (java-time/zoned-date-time (ZoneId/systemDefault))
-      java-time/local-date))
-
-(defn in-date-range? [start-date date end-date]
-  (let [local-date (->local-date date)]
-    (and (not (java-time/before? local-date start-date))
-         (not (java-time/after? local-date end-date)))))
-
-(defn- ->instant [local-date]
-  (java-time/java-date (apply java-time/offset-date-time (java-time/as local-date :year :month-of-year :day-of-month))))
-
-(defn upsert-period-of-transactions [connection institution date-attribute new-transactions start-date end-date]
+(defn upsert-interval-of-transactions [connection institution date-attribute new-transactions interval]
   (let [current-transactions (datahike/q
                                '[:find [(pull ?e [*]) ...]
-                                 :in $ ?institution ?date-attribute ?start-date ?end-date
+                                 :in $ ?institution ?date-attribute ?interval
                                  :where [?e :phoenix/institution ?institution]
                                  [?e ?date-attribute ?date]
-                                 [(hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/in-date-range? ?start-date ?date ?end-date)]]
+                                 [(java-time/contains? ?interval ?date)]]
                                @connection
                                institution
                                date-attribute
-                               start-date
-                               end-date)
+                               interval)
         [additions retractions] (->> new-transactions
-                                     (map #(update % date-attribute ->instant))
+                                     (map #(update % date-attribute java-time/java-date))
                                      (reduce
                                        (fn [[additions retractions] item]
                                          (let [[n m] (split-with #(not= (dissoc % :db/id) item) retractions)]
