@@ -5,7 +5,8 @@
            org.clojure/data.csv   {:mvn/version "1.0.0"}
            clojure.java-time      {:mvn/version "0.3.2"}
            hawk                   {:mvn/version "0.2.11"}
-           io.replikativ/datahike {:mvn/version "0.3.1"}}
+           io.replikativ/datahike {:mvn/version "0.3.1"}
+           me.raynes/fs           {:mvn/version "1.4.6"}}
  :aliases {:dev     {:extra-paths ["dev/src" "dev/resources"]
                      :extra-deps  {integrant/repl {:mvn/version "0.3.1"}
                                    clj-http       {:mvn/version "3.10.1"}}}

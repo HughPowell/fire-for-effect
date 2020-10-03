@@ -1,12 +1,15 @@
 (ns hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer
   (:require [clojure.core.async :as async]
             [integrant.core :as ig]
+            [me.raynes.fs :as fs]
             [hughpowell.co.uk.phoenix.cross-cutting-concerns.storage :as storage]))
 
 (defn- handle-file-action [headers institution csv-parser date-attribute schemaed-connection completion-channel]
   (fn [action file]
     (try
-      (when (= action :modify)
+      (when (or (and (= action :create)
+                     (not (zero? (fs/size file))))
+                (= action :modify))
         (let [transactions (map #(zipmap headers (cons institution %)) (csv-parser file))
               dates (map date-attribute transactions)]
           (when (seq transactions)
