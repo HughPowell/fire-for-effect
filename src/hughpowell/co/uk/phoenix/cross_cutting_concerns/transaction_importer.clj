@@ -20,20 +20,20 @@
               transactions
               (java-time/interval
                 (java-time/adjust (apply java-time/min dates) :first-day-of-month)
-                (java-time/adjust (apply java-time/max dates) :last-day-of-month)))))
+                (-> (apply java-time/max dates)
+                    (java-time/adjust :first-day-of-month)
+                    (java-time/plus (java-time/months 1))
+                    (java-time/minus (java-time/millis 1)))))))
         (when (some? completion-channel)
           (async/>!! completion-channel :complete)))
       (catch Throwable t
         (when (some? completion-channel)
           (async/>!! completion-channel t))))))
 
-(defmethod ig/init-key ::importer [_key {:keys                                        [csv-parser schemaed-connection completion-channel]
-                                         {:keys [watch] :as file-watcher}             :file-watcher
+(defmethod ig/init-key ::importer [_key {:keys                                        [csv-parser schemaed-connection input-channel completion-channel]
                                          {:keys [headers institution date-attribute]} :config}]
-  (assoc
-    file-watcher
-    :watch
-    (watch (handle-file-action headers institution csv-parser date-attribute schemaed-connection completion-channel))))
-
-(defmethod ig/halt-key! ::importer [_key {:keys [watch stop]}]
-  (stop watch))
+  (async/go-loop [handler (handle-file-action headers institution csv-parser date-attribute schemaed-connection completion-channel)]
+    (when-let [event (async/<! input-channel)]
+      (let [{:keys [kind file]} event]
+        (handler kind file)
+        (recur handler)))))

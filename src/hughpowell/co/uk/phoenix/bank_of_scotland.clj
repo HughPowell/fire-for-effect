@@ -17,12 +17,13 @@
     :schema     (ig/ref :hughpowell.co.uk.phoenix.bank-of-scotland.storage/schema)}
 
    [:hughpowell.co.uk.phoenix.cross-cutting-concerns.file-watcher/handler :bank-of-scotland/watcher]
-   {:path   (ig/ref :bank-of-scotland/input-path)
-    :filter (ig/ref :bank-of-scotland/input-filter)}
+   {:path    (ig/ref :bank-of-scotland/input-path)
+    :filter  (ig/ref :bank-of-scotland/input-filter)
+    :channel (ig/ref :hughpowell.co.uk.phoenix.cross-cutting-concerns.file-watcher/channel)}
 
    :hughpowell.co.uk.phoenix.bank-of-scotland.storage/headers {}
    [:hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer/importer :bank-of-scotland/transaction-importer]
-   {:file-watcher        (ig/ref :bank-of-scotland/watcher)
+   {:input-channel       (ig/ref :hughpowell.co.uk.phoenix.cross-cutting-concerns.file-watcher/channel)
     :schemaed-connection (ig/ref :bank-of-scotland/schemaed-connection)
     :csv-parser          (ig/ref :bank-of-scotland/csv-parser)
     :config              {:headers        (ig/ref :hughpowell.co.uk.phoenix.bank-of-scotland.storage/headers)
