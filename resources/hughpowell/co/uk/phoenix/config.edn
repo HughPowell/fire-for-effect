@@ -5,9 +5,6 @@
   :hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection
   {:storage {:backend :file
              :path #ig/ref :storage/path}}
-
-  :hughpowell.co.uk.phoenix.cross-cutting-concerns.file-watcher/channel {:size 10}
-
   }
 
  :duct.profile/dev   #duct/include "dev"
