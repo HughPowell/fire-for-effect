@@ -3,8 +3,7 @@
             [clojure.set :as set]
             [datahike.api :as datahike]
             [integrant.core :as ig]
-            [java-time :as java-time])
-  (:import (clojure.lang ExceptionInfo)))
+            [java-time :as java-time]))
 
 (defn upsert-interval-of-transactions [connection institution date-attribute new-transactions interval]
   (let [current-transactions (datahike/q
@@ -55,14 +54,9 @@
 
 (defmethod ig/init-key ::connection [_key {:keys [storage]}]
   (let [config {:storage storage}]
-    (try
-      (datahike/connect config)
-      (catch ExceptionInfo ex
-        (if (= (:type (ex-data ex) :backend-does-not-exist))
-          (do
-            (datahike/create-database config)
-            (datahike/connect config))
-          (throw ex))))))
+    (when-not (datahike/database-exists? config)
+      (datahike/create-database config))
+    (datahike/connect config)))
 
 (defmethod ig/halt-key! ::connection [_key connection]
   (datahike/release connection))
