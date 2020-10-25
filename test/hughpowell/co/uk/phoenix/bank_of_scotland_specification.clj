@@ -4,9 +4,10 @@
             [clojure.java.io :as io]
             [clojure.spec.gen.alpha :as gen]
             [clojure.spec.alpha :as spec]
-            [clojure.test :refer [testing]]
+            [clojure.test :refer [testing is]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.properties :as check-properties]
+            [clojure.test.check.generators :as check-generators]
             [datahike.api :as datahike]
             [duct.core :as duct]
             [integrant.core :as ig]
@@ -46,92 +47,135 @@
                                (spec/gen ::bank-of-scotland-csv-parser/csv-headers)
                                (spec/gen ::bank-of-scotland-csv-parser/csv-rows))))
 
-(defn context []
-  (let [config (-> (duct/resource "hughpowell/co/uk/phoenix/config.edn")
-                   (duct/read-config)
-                   (duct/prep-config [:duct.profile/test]))]
-    {:config config
-     :sut    (ig/init config)}))
+(defmacro with-resource [binding close-fn & body]
+  `(let ~binding
+     (try
+       (do ~@body)
+       (finally
+         (~close-fn ~(binding 0))))))
 
-(defn clean-up-context [{:keys [sut config]}]
-  (ig/halt! sut)
-  (datahike/delete-database (:hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection config)))
+(defmacro with-sut [sym & body]
+  `(let [config# (-> (duct/resource "hughpowell/co/uk/phoenix/config.edn")
+                     (duct/read-config)
+                     (duct/prep-config [:duct.profile/test]))
+         clean-up# (fn [sut#]
+                     (ig/halt! sut#)
+                     (datahike/delete-database (:hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection config#)))]
+     (with-resource [~sym (ig/init config#)] clean-up# ~@body)))
+
+(defn write-transactions [input-path transactions]
+  (with-open [writer (io/writer (fs/file input-path "BankOfScotlandTest.csv"))]
+    (csv/write-csv writer transactions)))
+
+(defn complete [channel]
+  (let [one-second (* 1 1000)]
+    (let [[result _channel] (async/alts!! [channel (async/timeout one-second)])]
+      (when (instance? Throwable result)
+        (throw result)))))
+
+(defn db-transactions->sorted-rows [connection headers]
+  (->> @connection
+       (datahike/q
+         '[:find [(pull ?e [*]) ...]
+           :where [?e :phoenix/institution :phoenix/bank-of-scotland]])
+       (map
+         (fn [t]
+           (-> t
+               (update :bank-of-scotland/date ->date-string)
+               (update :bank-of-scotland/credit str)
+               (update :bank-of-scotland/debit str)
+               (update :bank-of-scotland/balance str))))
+       (map (fn [transaction]
+              (map #(get transaction %) (rest headers))))
+       sort-transactions))
+
+(defn a-new-transaction-interval-is-added-to-the-database [transactions]
+  (with-sut
+    sut
+    (let [{:keys [:hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection
+                  :hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer/completion-channel
+                  :hughpowell.co.uk.phoenix.bank-of-scotland.storage/headers
+                  :bank-of-scotland/input-path]} sut]
+      (write-transactions input-path transactions)
+      (complete completion-channel)
+      (is (= (rest transactions)
+             (db-transactions->sorted-rows connection headers))))))
 
 (defspec a-new-transaction-interval
          100
   (testing "is added to the database"
     (check-properties/for-all
       [transactions transaction-generator]
-      (let [{:keys [sut] :as context} (context)
-            transaction-file (fs/file (:bank-of-scotland/input-path sut) "BankOfScotlandTest.csv")]
-        (try
-          (let [{:keys [:hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection
-                        :hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer/completion-channel
-                        :hughpowell.co.uk.phoenix.bank-of-scotland.storage/headers]} sut
-                one-second (* 1 1000)]
-            (with-open [writer (io/writer transaction-file)]
-              (csv/write-csv writer transactions))
-            (let [[result _channel] (async/alts!! [completion-channel (async/timeout one-second)])]
-              (when (instance? Throwable result)
-                (throw result)))
-            (let [db-transactions (->> @connection
-                                       (datahike/q
-                                         '[:find [(pull ?e [*]) ...]
-                                           :where [?e :phoenix/institution :phoenix/bank-of-scotland]])
-                                       (map
-                                         (fn [t]
-                                           (-> t
-                                               (update :bank-of-scotland/date ->date-string)
-                                               (update :bank-of-scotland/credit str)
-                                               (update :bank-of-scotland/debit str)
-                                               (update :bank-of-scotland/balance str)))))]
-              (= (rest transactions)
-                 (->> db-transactions
-                      (map (fn [transaction]
-                             (map #(get transaction %) (rest headers))))
-                      sort-transactions))))
-          (finally
-            (io/delete-file transaction-file true)
-            (clean-up-context context)))))))
+      (a-new-transaction-interval-is-added-to-the-database transactions))))
 
-(def input-file-generator
-  ())
+(defn duplicate-transaction-intervals-are-added-idempotently [transactions number-of-duplicates]
+  (with-sut
+    sut
+    (let [{:keys [:hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection
+                  :hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer/completion-channel
+                  :hughpowell.co.uk.phoenix.bank-of-scotland.storage/headers
+                  :bank-of-scotland/input-path]} sut]
+      (is (apply =
+                 (repeatedly
+                   number-of-duplicates
+                   (fn []
+                     (write-transactions input-path transactions)
+                     (complete completion-channel)
+                     (->> @connection
+                          (datahike/q
+                            '[:find [(pull ?e [*]) ...]
+                              :where [?e :phoenix/institution :phoenix/bank-of-scotland]])
+                          (sort-by (apply juxt headers))
+                          doall))))))))
 
-(defspec a-duplicate-transaction-interval
+(defspec duplicate-transaction-intervals
          100
-  (testing "is added idempotentically"
+  (testing "are added idempotentically"
     (check-properties/for-all
-      [transactions transaction-generator]
-      (let [{:keys [sut] :as context} (context)]
-        (try
-          (let [{:keys [:hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection
-                        :hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer/completion-channel
-                        :hughpowell.co.uk.phoenix.bank-of-scotland.storage/headers]} sut
-                ten-seconds (* 10 1000)
-                first-file (fs/file (:bank-of-scotland/input-path sut) (fs/temp-name "BankOfScotland" ".csv"))]
-            (with-open [writer (io/writer first-file)]
-              (csv/write-csv writer transactions))
-            (let [[result _channel] (async/alts!! [completion-channel (async/timeout ten-seconds)])]
-              (when (instance? Throwable result)
-                (throw result)))
-            (let [db-transactions (->> @connection
-                                       (datahike/q
-                                         '[:find [(pull ?e [*]) ...]
-                                           :where [?e :phoenix/institution :phoenix/bank-of-scotland]])
-                                       (sort-by (apply juxt headers))
-                                       doall)
-                  second-file (fs/file (:bank-of-scotland/input-path sut) (fs/temp-name "BankOfScotland" ".csv"))]
-              (with-open [writer (io/writer second-file)]
-                (csv/write-csv writer transactions))
-              (let [[result _channel] (async/alts!! [completion-channel (async/timeout ten-seconds)])]
-                (when (instance? Throwable result)
-                  (throw result))
-                (let [idempotent-db-transactions (->> @connection
-                                                      (datahike/q
-                                                        '[:find [(pull ?e [*]) ...]
-                                                          :where [?e :phoenix/institution :phoenix/bank-of-scotland]])
-                                                      (sort-by (apply juxt headers))
-                                                      doall)]
-                  (= db-transactions idempotent-db-transactions)))))
-          (finally
-            (clean-up-context context)))))))
+      [transactions transaction-generator
+       number-of-duplicates (check-generators/choose 2 10)]
+      (duplicate-transaction-intervals-are-added-idempotently transactions number-of-duplicates))))
+
+(defn ->local-date [s]
+  (->> s
+       (re-find #"(\d{2})\/(\d{2})\/(\d{4})")
+       rest
+       (map #(Integer/parseInt %))
+       reverse
+       (apply java-time/local-date)))
+
+(defn later-overlapping-transaction-intervals-take-precedence [transaction-intervals]
+  (with-sut
+    sut
+    (let [{:keys [:hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection
+                  :hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer/completion-channel
+                  :hughpowell.co.uk.phoenix.bank-of-scotland.storage/headers
+                  :bank-of-scotland/input-path]} sut]
+      (doall (map (fn [transaction-interval]
+                    (write-transactions input-path transaction-interval)
+                    (complete completion-channel))
+                  transaction-intervals))
+      (let [expected (sort-transactions
+                       (reduce
+                         (fn
+                           ([] [])
+                           ([acc item]
+                            (concat (take-while #(java-time/before? (->local-date (first %)) (->local-date (ffirst item))) acc) item)))
+                         (map rest transaction-intervals)))
+            results (db-transactions->sorted-rows connection headers)]
+        (is (= expected results))))))
+
+(defspec later-overlapping-transaction-intervals
+         100
+  (testing "take precedence"
+    (check-properties/for-all
+      [transaction-intervals (gen/fmap
+                               (fn [[headers rows]]
+                                 (->> rows
+                                      sort-transactions
+                                      (partition-all 3 2)
+                                      (map #(cons headers %))))
+                               (gen/tuple
+                                 (spec/gen ::bank-of-scotland-csv-parser/csv-headers)
+                                 (spec/gen ::bank-of-scotland-csv-parser/csv-rows)))]
+      (later-overlapping-transaction-intervals-take-precedence transaction-intervals))))
