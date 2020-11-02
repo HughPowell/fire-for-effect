@@ -5,6 +5,8 @@
             [integrant.core :as ig]
             [java-time :as java-time]))
 
+(defmulti ->db-entity (fn [institution _] institution))
+
 (defn upsert-interval-of-transactions [connection institution date-attribute new-transactions interval]
   (let [current-transactions (datahike/q
                                '[:find [(pull ?e [*]) ...]
@@ -17,7 +19,7 @@
                                date-attribute
                                interval)
         [additions retractions] (->> new-transactions
-                                     (map #(update % date-attribute java-time/java-date))
+                                     (map #(->db-entity institution %))
                                      (reduce
                                        (fn [[additions retractions] item]
                                          (let [[n m] (split-with #(not= (dissoc % :db/id) item) retractions)]

@@ -5,6 +5,8 @@
   :hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection
   {:storage {:backend :file
              :path #ig/ref :storage/path}}
+
+  :hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer/completion-channel {}
   }
 
  :duct.profile/dev   #duct/include "dev"
@@ -13,5 +15,6 @@
  :duct.profile/prod  {}
 
  :hughpowell.co.uk.phoenix.bank-of-scotland/module {}
+ :hughpowell.co.uk.phoenix.halifax/module {}
 
  :duct.module/logging {}}

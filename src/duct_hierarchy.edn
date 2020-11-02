@@ -1,4 +1,9 @@
-{:hughpowell.co.uk.bank-of-scotland/module [:duct/module]
- :storage/path                             [:duct/const]
+{:storage/path                             [:duct/const]
+
+ :hughpowell.co.uk.bank-of-scotland/module [:duct/module]
  :bank-of-scotland/input-path              [:duct/const]
- :bank-of-scotland/input-filter            [:duct/const]}
+ :bank-of-scotland/input-filter            [:duct/const]
+
+ :hughpowell.co.uk.halifax/module          [:duct/module]
+ :halifax/input-path                       [:duct/const]
+ :halifax/input-filter                     [:duct/const]}

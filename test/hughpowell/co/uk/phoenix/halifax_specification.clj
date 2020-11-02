@@ -1,4 +1,4 @@
-(ns hughpowell.co.uk.phoenix.bank-of-scotland-specification
+(ns hughpowell.co.uk.phoenix.halifax-specification
   (:require [clojure.core.async :as async]
             [clojure.data.csv :as csv]
             [clojure.java.io :as io]
@@ -14,18 +14,18 @@
             [me.raynes.fs :as fs]
             [hughpowell.co.uk.phoenix.cross-cutting-concerns.storage :as storage]
             [hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer :as transaction-importer]
-            [hughpowell.co.uk.phoenix.bank-of-scotland.csv-parser :as bank-of-scotland-csv-parser]
-            [hughpowell.co.uk.phoenix.bank-of-scotland.storage :as bank-of-scotland-storage]))
+            [hughpowell.co.uk.phoenix.halifax.csv-parser :as halifax-csv-parser]
+            [hughpowell.co.uk.phoenix.halifax.storage :as halifax-storage]))
 
 (duct/load-hierarchy)
 
 (defmethod ig/init-key ::transaction-importer/completion-channel [_key _opts]
   (async/chan 10))
 
-(defmethod ig/init-key :bank-of-scotland/input-path [_key _opts]
-  (fs/temp-dir "Phoenix-BankOfScotland-Test"))
+(defmethod ig/init-key :halifax/input-path [_key _opts]
+  (fs/temp-dir "Phoenix-Halifax-Test"))
 
-(defmethod ig/halt-key! :bank-of-scotland/input-path [_key value]
+(defmethod ig/halt-key! :halifax/input-path [_key value]
   (fs/delete-dir value))
 
 (defn- ->date-string [instant]
@@ -47,8 +47,8 @@
                                                       sort-transactions
                                                       (cons header)))
                              (gen/tuple
-                               (spec/gen ::bank-of-scotland-csv-parser/csv-headers)
-                               (spec/gen ::bank-of-scotland-csv-parser/csv-rows))))
+                               (spec/gen ::halifax-csv-parser/csv-headers)
+                               (spec/gen ::halifax-csv-parser/csv-rows))))
 
 (defmacro with-resource [binding close-fn & body]
   `(let ~binding
@@ -67,7 +67,7 @@
      (with-resource [~sym (ig/init config#)] clean-up# ~@body)))
 
 (defn write-transactions [input-path transactions]
-  (with-open [writer (io/writer (fs/file input-path "BankOfScotlandTest.csv"))]
+  (with-open [writer (io/writer (fs/file input-path "HalifaxTest.csv"))]
     (csv/write-csv writer transactions)))
 
 (defn complete [channel]
@@ -80,14 +80,13 @@
   (->> @connection
        (datahike/q
          '[:find [(pull ?e [*]) ...]
-           :where [?e :phoenix/institution :phoenix/bank-of-scotland]])
+           :where [?e :phoenix/institution :phoenix/halifax]])
        (map
          (fn [t]
            (-> t
-               (update :bank-of-scotland/date ->date-string)
-               (update :bank-of-scotland/credit str)
-               (update :bank-of-scotland/debit str)
-               (update :bank-of-scotland/balance str))))
+               (update :halifax/date ->date-string)
+               (update :halifax/date-entered ->date-string)
+               (update :halifax/amount str))))
        (map (fn [transaction]
               (map #(get transaction %) (rest headers))))
        sort-transactions))
@@ -97,27 +96,27 @@
     sut
     (let [{:keys [::storage/connection
                   ::transaction-importer/completion-channel
-                  ::bank-of-scotland-storage/headers
-                  :bank-of-scotland/input-path]} sut]
+                  ::halifax-storage/headers
+                  :halifax/input-path]} sut]
       (write-transactions input-path transactions)
       (complete completion-channel)
-      (is (= (rest transactions)
+      (is (= (rest (map drop-last transactions))
              (db-transactions->sorted-rows connection headers))))))
 
 (defspec a-new-transaction-interval
          100
-  (testing "is added to the database"
-    (check-properties/for-all
-      [transactions transaction-generator]
-      (a-new-transaction-interval-is-added-to-the-database transactions))))
+         (testing "is added to the database"
+           (check-properties/for-all
+             [transactions transaction-generator]
+             (a-new-transaction-interval-is-added-to-the-database transactions))))
 
 (defn duplicate-transaction-intervals-are-added-idempotently [transactions number-of-duplicates]
   (with-sut
     sut
     (let [{:keys [::storage/connection
                   ::transaction-importer/completion-channel
-                  ::bank-of-scotland-storage/headers
-                  :bank-of-scotland/input-path]} sut]
+                  ::halifax-storage/headers
+                  :halifax/input-path]} sut]
       (is (apply =
                  (repeatedly
                    number-of-duplicates
@@ -127,17 +126,17 @@
                      (->> @connection
                           (datahike/q
                             '[:find [(pull ?e [*]) ...]
-                              :where [?e :phoenix/institution :phoenix/bank-of-scotland]])
+                              :where [?e :phoenix/institution :phoenix/halifax]])
                           (sort-by (apply juxt headers))
                           doall))))))))
 
 (defspec duplicate-transaction-intervals
          100
-  (testing "are added idempotentically"
-    (check-properties/for-all
-      [transactions transaction-generator
-       number-of-duplicates (check-generators/choose 2 10)]
-      (duplicate-transaction-intervals-are-added-idempotently transactions number-of-duplicates))))
+         (testing "are added idempotentically"
+           (check-properties/for-all
+             [transactions transaction-generator
+              number-of-duplicates (check-generators/choose 2 10)]
+             (duplicate-transaction-intervals-are-added-idempotently transactions number-of-duplicates))))
 
 (defn ->local-date [s]
   (->> s
@@ -152,8 +151,8 @@
     sut
     (let [{:keys [::storage/connection
                   ::transaction-importer/completion-channel
-                  ::bank-of-scotland-storage/headers
-                  :bank-of-scotland/input-path]} sut]
+                  ::halifax-storage/headers
+                  :halifax/input-path]} sut]
       (doall (map (fn [transaction-interval]
                     (write-transactions input-path transaction-interval)
                     (complete completion-channel))
@@ -164,21 +163,23 @@
                            ([] [])
                            ([acc item]
                             (concat (take-while #(java-time/before? (->local-date (first %)) (->local-date (ffirst item))) acc) item)))
-                         (map rest transaction-intervals)))
+                         (map (fn [[_ & transactions]]
+                                (map drop-last transactions))
+                              transaction-intervals)))
             results (db-transactions->sorted-rows connection headers)]
         (is (= expected results))))))
 
 (defspec later-overlapping-transaction-intervals
          100
-  (testing "take precedence"
-    (check-properties/for-all
-      [transaction-intervals (gen/fmap
-                               (fn [[headers rows]]
-                                 (->> rows
-                                      sort-transactions
-                                      (partition-all 3 2)
-                                      (map #(cons headers %))))
-                               (gen/tuple
-                                 (spec/gen ::bank-of-scotland-csv-parser/csv-headers)
-                                 (spec/gen ::bank-of-scotland-csv-parser/csv-rows)))]
-      (later-overlapping-transaction-intervals-take-precedence transaction-intervals))))
+         (testing "take precedence"
+           (check-properties/for-all
+             [transaction-intervals (gen/fmap
+                                      (fn [[headers rows]]
+                                        (->> rows
+                                             sort-transactions
+                                             (partition-all 3 2)
+                                             (map #(cons headers %))))
+                                      (gen/tuple
+                                        (spec/gen ::halifax-csv-parser/csv-headers)
+                                        (spec/gen ::halifax-csv-parser/csv-rows)))]
+             (later-overlapping-transaction-intervals-take-precedence transaction-intervals))))

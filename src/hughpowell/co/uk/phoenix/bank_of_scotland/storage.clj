@@ -1,5 +1,7 @@
 (ns hughpowell.co.uk.phoenix.bank-of-scotland.storage
-  (:require [integrant.core :as ig]))
+  (:require [integrant.core :as ig]
+            [java-time :as java-time]
+            [hughpowell.co.uk.phoenix.cross-cutting-concerns.storage :as storage]))
 
 (def ^:private schema
   [{:db/ident       :phoenix/institution
@@ -35,3 +37,6 @@
 
 (defmethod ig/init-key ::headers [_key _opts]
   (map :db/ident schema))
+
+(defmethod storage/->db-entity :phoenix/bank-of-scotland [_institution entity]
+  (update entity :bank-of-scotland/date java-time/java-date))

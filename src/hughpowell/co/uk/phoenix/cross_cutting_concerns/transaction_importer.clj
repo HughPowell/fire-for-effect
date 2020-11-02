@@ -35,3 +35,5 @@
 
 (defmethod ig/halt-key! ::importer [_key watch]
   (hawk/stop! watch))
+
+(defmethod ig/init-key ::completion-channel [_key _opts] nil)
