@@ -17,5 +17,6 @@
  :hughpowell.co.uk.phoenix.bank-of-scotland/module {}
  :hughpowell.co.uk.phoenix.halifax/module {}
  :hughpowell.co.uk.phoenix.nationwide/module {}
+ :hughpowell.co.uk.phoenix.santander/module {}
 
  :duct.module/logging {}}

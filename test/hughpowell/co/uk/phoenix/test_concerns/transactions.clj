@@ -6,16 +6,16 @@
             [clojure.java.io :as io]
             [me.raynes.fs :as fs]))
 
-(defn sort [date-pattern transactions]
+(defn sort [date-pattern date-index transactions]
   (sort-by (apply juxt
-                  (fn [[date]]
-                    (java-time/local-date date-pattern date))
+                  (fn [transaction]
+                    (java-time/local-date date-pattern (nth transaction date-index)))
                   (take (dec (count (first transactions))) (drop 1 (map #(fn [c] (nth c %)) (range)))))
            transactions))
 
-(defn generator [date-pattern header-spec row-spec]
+(defn generator [date-pattern date-index header-spec row-spec]
   (gen/fmap
-    (fn [[header rows]] (->> rows (sort date-pattern) (cons header)))
+    (fn [[header rows]] (->> rows (sort date-pattern date-index) (cons header)))
     (gen/tuple
       (spec/gen header-spec)
       (spec/gen row-spec))))

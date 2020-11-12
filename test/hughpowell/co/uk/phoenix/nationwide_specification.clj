@@ -36,7 +36,7 @@
                (update :nationwide/balance #(units/->money-string "£" %)))))
        (map (fn [transaction]
               (map #(get transaction %) (rest headers))))
-       (transactions/sort "dd MMM yyyy")))
+       (transactions/sort "dd MMM yyyy" 0)))
 
 (defn a-new-transaction-interval-is-added-to-the-database [transactions]
   (fixtures/with-sut
@@ -54,7 +54,7 @@
          100
   (testing "is added to the database"
     (check-properties/for-all
-      [transactions (transactions/generator "dd MMM yyyy" ::nationwide-csv-parser/csv-headers ::nationwide-csv-parser/csv-rows)]
+      [transactions (transactions/generator "dd MMM yyyy" 0 ::nationwide-csv-parser/csv-headers ::nationwide-csv-parser/csv-rows)]
       (a-new-transaction-interval-is-added-to-the-database transactions))))
 
 (defn duplicate-transaction-intervals-are-added-idempotently [transactions number-of-duplicates]
@@ -81,7 +81,7 @@
          100
   (testing "are added idempotentically"
     (check-properties/for-all
-      [transactions (transactions/generator "dd MMM yyyy" ::nationwide-csv-parser/csv-headers ::nationwide-csv-parser/csv-rows)
+      [transactions (transactions/generator "dd MMM yyyy" 0 ::nationwide-csv-parser/csv-headers ::nationwide-csv-parser/csv-rows)
        number-of-duplicates (check-generators/choose 2 10)]
       (duplicate-transaction-intervals-are-added-idempotently transactions number-of-duplicates))))
 
@@ -98,6 +98,7 @@
                   transaction-intervals))
       (let [expected (transactions/sort
                        "dd MMM yyyy"
+                       0
                        (reduce
                          (fn
                            ([] [])
@@ -117,7 +118,7 @@
       [transaction-intervals (gen/fmap
                                (fn [[headers rows]]
                                  (->> rows
-                                      (transactions/sort "dd MMM yyyy")
+                                      (transactions/sort "dd MMM yyyy" 0)
                                       (partition-all 3 2)
                                       (map #(cons headers %))))
                                (gen/tuple

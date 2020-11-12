@@ -9,4 +9,7 @@
  :halifax/input-path #ig/ref :halifax/input-test-path
 
  :nationwide/input-test-path {}
- :nationwide/input-path #ig/ref :nationwide/input-test-path}
+ :nationwide/input-path #ig/ref :nationwide/input-test-path
+
+ :santander/input-test-path {}
+ :santander/input-path #ig/ref :santander/input-test-path}
