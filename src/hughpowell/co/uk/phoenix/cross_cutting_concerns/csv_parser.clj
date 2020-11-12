@@ -21,13 +21,15 @@
   (validate headers-spec headers)
   (or rows []))
 
-(defn- parse-csv [file headers-spec rows-spec]
-  (with-open [reader (io/reader file)]
+(defn- parse-csv [file encoding headers-spec rows-spec]
+  (with-open [reader (io/reader file :encoding encoding)]
     (->> reader
          csv/read-csv
+         (drop-while #(not (spec/valid? headers-spec %)))
          (validate-&-strip-headers headers-spec)
          (conform rows-spec)
          doall)))
 
-(defmethod ig/init-key ::parse [_key {:keys [headers-spec rows-spec]}]
-  (fn [f] (parse-csv f headers-spec rows-spec)))
+(defmethod ig/init-key ::parse [_key {:keys [headers-spec rows-spec encoding]
+                                      :or   {encoding "UTF-8"}}]
+  (fn [f] (parse-csv f encoding headers-spec rows-spec)))

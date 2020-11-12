@@ -4,7 +4,7 @@
             [integrant.core :as ig]
             [hughpowell.co.uk.phoenix.cross-cutting-concerns.units :as units]))
 
-(spec/def ::date units/date)
+(spec/def ::date (units/date "dd/MM/yyyy"))
 (spec/def ::type (spec/and string? seq))
 (spec/def ::sort-code (spec/with-gen
                         (spec/conformer #(or (re-find #"\d{2}-\d{2}-\d{2}" %) ::spec/invalid))
@@ -15,9 +15,9 @@
                              #(gen/fmap (fn [n] (format "%08d" n))
                                         (spec/gen (spec/int-in 0 100000000)))))
 (spec/def ::description (spec/and string? seq))
-(spec/def ::debit units/money)
-(spec/def ::credit units/money)
-(spec/def ::balance units/money)
+(spec/def ::debit (units/money))
+(spec/def ::credit (units/money))
+(spec/def ::balance (units/money))
 
 (spec/def ::csv-row
   (spec/and

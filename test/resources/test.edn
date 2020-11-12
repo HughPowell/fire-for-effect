@@ -1,3 +1,12 @@
 {:hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection {:storage {:backend :mem
                                                                                 :id "test"}}
- :hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer/completion-channel {}}
+ :hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer/completion-channel {}
+
+ :bank-of-scotland/input-test-path {}
+ :bank-of-scotland/input-path #ig/ref :bank-of-scotland/input-test-path
+
+ :halifax/input-test-path {}
+ :halifax/input-path #ig/ref :halifax/input-test-path
+
+ :nationwide/input-test-path {}
+ :nationwide/input-path #ig/ref :nationwide/input-test-path}

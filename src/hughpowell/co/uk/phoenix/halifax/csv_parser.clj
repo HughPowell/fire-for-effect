@@ -4,13 +4,13 @@
             [integrant.core :as ig]
             [hughpowell.co.uk.phoenix.cross-cutting-concerns.units :as units]))
 
-(spec/def ::date units/date)
-(spec/def ::date-entered units/date)
+(spec/def ::date (units/date "dd/MM/yyyy"))
+(spec/def ::date-entered (units/date "dd/MM/yyyy"))
 (spec/def ::reference string?)
 (spec/def ::description (spec/and
                           string?
                           (spec/conformer string/trimr)))
-(spec/def ::amount units/money)
+(spec/def ::amount (units/money))
 (spec/def ::empty #{""})
 
 (spec/def ::csv-row (spec/tuple ::date ::date-entered ::reference ::description ::amount ::empty))

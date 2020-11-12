@@ -12,14 +12,14 @@
             [hughpowell.co.uk.phoenix.cross-cutting-concerns.transaction-importer :as transaction-importer]
             [hughpowell.co.uk.phoenix.halifax.csv-parser :as halifax-csv-parser]
             [hughpowell.co.uk.phoenix.halifax.storage :as halifax-storage]
-            [hughpowell.co.uk.phoenix.test-concerns.dates :as dates]
+            [hughpowell.co.uk.phoenix.test-concerns.units :as units]
             [hughpowell.co.uk.phoenix.test-concerns.fixtures :as fixtures]
             [hughpowell.co.uk.phoenix.test-concerns.transactions :as transactions]))
 
-(defmethod ig/init-key :halifax/input-path [_key _opts]
+(defmethod ig/init-key :halifax/input-test-path [_key _opts]
   (fs/temp-dir "Phoenix-Halifax-Test"))
 
-(defmethod ig/halt-key! :halifax/input-path [_key value]
+(defmethod ig/halt-key! :halifax/input-test-path [_key value]
   (fs/delete-dir value))
 
 (defn db-transactions->sorted-rows [connection headers]
@@ -30,12 +30,12 @@
        (map
          (fn [t]
            (-> t
-               (update :halifax/date dates/->date-string)
-               (update :halifax/date-entered dates/->date-string)
-               (update :halifax/amount str))))
+               (update :halifax/date #(units/->date-string "dd/MM/yyyy" %))
+               (update :halifax/date-entered #(units/->date-string "dd/MM/yyyy" %))
+               (update :halifax/amount units/->money-string))))
        (map (fn [transaction]
               (map #(get transaction %) (rest headers))))
-       transactions/sort))
+       (transactions/sort "dd/MM/yyyy")))
 
 (defn a-new-transaction-interval-is-added-to-the-database [transactions]
   (fixtures/with-sut
@@ -53,7 +53,7 @@
          100
          (testing "is added to the database"
            (check-properties/for-all
-             [transactions (transactions/generator ::halifax-csv-parser/csv-headers ::halifax-csv-parser/csv-rows)]
+             [transactions (transactions/generator "dd/MM/yyyy" ::halifax-csv-parser/csv-headers ::halifax-csv-parser/csv-rows)]
              (a-new-transaction-interval-is-added-to-the-database transactions))))
 
 (defn duplicate-transaction-intervals-are-added-idempotently [transactions number-of-duplicates]
@@ -80,7 +80,7 @@
          100
          (testing "are added idempotentically"
            (check-properties/for-all
-             [transactions (transactions/generator ::halifax-csv-parser/csv-headers ::halifax-csv-parser/csv-rows)
+             [transactions (transactions/generator "dd/MM/yyyy" ::halifax-csv-parser/csv-headers ::halifax-csv-parser/csv-rows)
               number-of-duplicates (check-generators/choose 2 10)]
              (duplicate-transaction-intervals-are-added-idempotently transactions number-of-duplicates))))
 
@@ -96,12 +96,13 @@
                     (fixtures/complete completion-channel))
                   transaction-intervals))
       (let [expected (transactions/sort
+                       "dd/MM/yyyy"
                        (reduce
                          (fn
                            ([] [])
                            ([acc item]
-                            (concat (take-while #(java-time/before? (dates/->local-date (first %))
-                                                                    (dates/->local-date (ffirst item)))
+                            (concat (take-while #(java-time/before? (units/->local-date #"\d{2}\/\d{2}\/\d{4}" "dd/MM/yyyy" (first %))
+                                                                    (units/->local-date #"\d{2}\/\d{2}\/\d{4}" "dd/MM/yyyy" (ffirst item)))
                                                 acc)
                                     item)))
                          (map (fn [[_ & transactions]]
@@ -117,7 +118,7 @@
              [transaction-intervals (gen/fmap
                                       (fn [[headers rows]]
                                         (->> rows
-                                             transactions/sort
+                                             (transactions/sort "dd/MM/yyyy")
                                              (partition-all 3 2)
                                              (map #(cons headers %))))
                                       (gen/tuple

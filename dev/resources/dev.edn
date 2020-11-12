@@ -1,2 +1,5 @@
 {:hughpowell.co.uk.phoenix.cross-cutting-concerns.storage/connection {:storage {:backend :mem
-                                                                                :id "dev"}}}
+                                                                                :id "dev"}}
+ :bank-of-scotland/input-path "dev/data/"
+ :halifax/input-path "dev/data/"
+ :nationwide/input-path "dev/data/"}
